@@ -9,9 +9,9 @@ Skye Pekerti
 
 ## List of Source Files
 
-* BayesNet
-* Driver
-* Variable
+* BayesNet.java
+* Driver.java
+* Variable.java
 
 ## Platform
 

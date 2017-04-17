@@ -31,15 +31,26 @@ public class Variable {
         isSet = false;
     }
 
+    public boolean isSet() {
+        return isSet;
+    }
+
+    @Override
     public int hashCode() {
         return name;
     }
 
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof Variable) {
             Variable other = (Variable)obj;
             return name == other.name;
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%c%s", name, isSet ? String.format(" = %c", value ? 't' : 'f') : "");
     }
 }
