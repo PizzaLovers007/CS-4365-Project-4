@@ -9,10 +9,21 @@ import java.util.regex.Matcher;
 
 public class Driver {
 
+    /**
+     * Query to enumerate over the Bayes Net to find the probabilities of {@code queryVar}
+     * given {@code evidence}.
+     * @param queryVar variable to query
+     * @param evidence given variables in the query
+     * @param bayesNet Bayes Net for the query
+     */
     public void enumerationAsk(Variable queryVar, TreeSet<Variable> evidence, BayesNet bayesNet) {
+        // Get the variable ordering from the Bayes Net
         ArrayList<Variable> vars = bayesNet.getVars(evidence);
+
+        // Add query variable to the evidence
         evidence.add(queryVar);
 
+        // Set the query variable to false
         for (Variable v : vars) {
             if (v.getName() == queryVar.getName()) {
                 v.setValue(false);
@@ -20,8 +31,11 @@ public class Driver {
             }
         }
         queryVar.setValue(false);
+
+        // Get the probability that the query variable is false
         double falseProbability = enumerateAll(vars, evidence, bayesNet);
 
+        // Set the query variable to true
         for (Variable v : vars) {
             if (v.getName() == queryVar.getName()) {
                 v.setValue(true);
@@ -29,46 +43,71 @@ public class Driver {
             }
         }
         queryVar.setValue(true);
+
+        // Get the probability that the query variable is true
         double trueProbability = enumerateAll(vars, evidence, bayesNet);
 
+        // Remove the query variable from the evidence
         evidence.remove(queryVar);
 
+        // Print "RESULT" header
         System.out.println();
         System.out.println("RESULT:");
 
+        // Print false probability
         queryVar.setValue(false);
         System.out.printf("P(%s | %s) = %.16f%n", queryVar, evidence.toString().replaceAll("[\\[\\]]", ""), falseProbability/(falseProbability+trueProbability));
 
+        // Print true probability
         queryVar.setValue(true);
         System.out.printf("P(%s | %s) = %.16f%n", queryVar, evidence.toString().replaceAll("[\\[\\]]", ""), trueProbability/(falseProbability+trueProbability));
     }
 
+    /**
+     * Recursive call to calculate the probabilities of all the variables in {@code vars}.
+     * @param vars variables to calculate probabilities of
+     * @param evidence given variables in the query
+     * @param bayesNet Bayes Net for the query
+     * @return combined probability of all the variables in {@code vars}
+     */
     public double enumerateAll(ArrayList<Variable> vars, TreeSet<Variable> evidence, BayesNet bayesNet) {
+        // Base case
         if (vars.isEmpty()) {
             return 1;
         }
+
+        // Get the next variable to process
         Variable first = vars.remove(0);
         double retVal = 0;
+
         if (first.isSet()) {
+            // Variable is set so only get the probability for its value
             double probability = bayesNet.getProbability(first, evidence);
             retVal = probability * enumerateAll(vars, evidence, bayesNet);
         } else {
+            // Variable is not set so get the total probability
+
+            // Calculate false first
             first.setValue(false);
             double probability = bayesNet.getProbability(first, evidence);
             evidence.add(first);
             retVal += probability * enumerateAll(vars, evidence, bayesNet);
             evidence.remove(first);
 
+            // Then true
             first.setValue(true);
             probability = bayesNet.getProbability(first, evidence);
             evidence.add(first);
             retVal += probability * enumerateAll(vars, evidence, bayesNet);
             evidence.remove(first);
 
+            // Unset value to undo recursive steps
             first.unsetValue();
         }
+        // Put variable back in the list to undo recursive steps
         vars.add(0, first);
 
+        // Build the output line
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < bayesNet.size(); i++) {
             if (i < vars.size()) {
@@ -90,6 +129,7 @@ public class Driver {
         sb.append("      = ").append(String.format("%.8f", retVal));
         System.out.println(sb);
 
+        // Return the combined probability
         return retVal;
     }
 
@@ -199,7 +239,7 @@ public class Driver {
 						tf.find();
 						probabilitiesOfNode[Integer.parseInt(tf.group().replaceAll("t ","1").replaceAll("f ","0"),2)] = Double.parseDouble(p.group());
 					}
-					System.out.printf("%s %s\n%s",Arrays.toString(leftVariables),rightVariable,Arrays.toString(probabilitiesOfNode)); //DEBUG
+//					System.out.printf("%s %s\n%s",Arrays.toString(leftVariables),rightVariable,Arrays.toString(probabilitiesOfNode)); //DEBUG
 					bayesNet.add(leftVariables,rightVariable,probabilitiesOfNode);
 				}
 				
