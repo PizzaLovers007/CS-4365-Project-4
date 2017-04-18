@@ -56,11 +56,17 @@ public class Driver {
 
         // Print false probability
         queryVar.setValue(false);
-        System.out.printf("P(%s | %s) = %.16f%n", queryVar, evidence.toString().replaceAll("[\\[\\]]", ""), falseProbability/(falseProbability+trueProbability));
+        System.out.printf("P(%s%s) = %.16f%n",
+                queryVar,
+                String.format("%s%s", evidence.isEmpty() ? "" : " | ", evidence.toString().replaceAll("[\\[\\]]", "")),
+                falseProbability/(falseProbability+trueProbability));
 
         // Print true probability
         queryVar.setValue(true);
-        System.out.printf("P(%s | %s) = %.16f%n", queryVar, evidence.toString().replaceAll("[\\[\\]]", ""), trueProbability/(falseProbability+trueProbability));
+        System.out.printf("P(%s%s) = %.16f%n",
+                queryVar,
+                String.format("%s%s", evidence.isEmpty() ? "" : " | ", evidence.toString().replaceAll("[\\[\\]]", "")),
+                trueProbability/(falseProbability+trueProbability));
     }
 
     /**
@@ -185,7 +191,6 @@ public class Driver {
 					Matcher p = probability.matcher(givenLine);
 					p.find();
 					bayesNet.add(s.group().charAt(2),Double.parseDouble(p.group())); //Adds the variable to the bayes net with its probability
-					in.nextLine();
 				}
 				else if(m.find()) //True if the line is for a node with parents
 				{
