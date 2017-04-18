@@ -49,6 +49,17 @@ public class BayesNet {
      */
     public void add(char varName, double probability) {
         Node child = new Node(varName, new char[]{}, new double[]{probability});
+
+        // Connect variable's children to the node
+        for (Node n : nodes) {
+            for (char pName : n.parentNames) {
+                if (varName == pName) {
+                    child.children.add(n);
+                    break;
+                }
+            }
+        }
+
         nodes.add(child);
     }
 
@@ -63,11 +74,19 @@ public class BayesNet {
         // Create node
         Node child = new Node(childName, parentNames, probabilities);
 
-        // Connect variable's parents to the node
+        // Connect variable's parents and children to the node
         int i = 0;
-        for (Node node : nodes) {
-            if (node.var.getName() == parentNames[i]) {
-                node.children.add(child);
+        for (Node n : nodes) {
+            // Connect if n is parent
+            if (n.var.getName() == parentNames[i]) {
+                n.children.add(child);
+            }
+            // Connect if n is child
+            for (char pName : n.parentNames) {
+                if (childName == pName) {
+                    child.children.add(n);
+                    break;
+                }
             }
         }
 
