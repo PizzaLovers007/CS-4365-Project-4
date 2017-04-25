@@ -96,12 +96,12 @@ public class BayesNet {
 
     /**
      * Gets all the variables in the Bayes Net in topological order with
-     * evidence vars assigned.
+     * evidence vars assigned. Used in enumerateAll().
      * @param evidence given variables in the query
      * @return list of variables in topological order
      */
-    public ArrayList<Variable> getVars(TreeSet<Variable> evidence) {
-        ArrayList<Variable> vars = topologicalOrder();
+    public ArrayList<Variable> getEnumVars(TreeSet<Variable> evidence) {
+        ArrayList<Variable> vars = topologicalOrder(false, null);
 
         // Set evidence variables
         for (Variable v : vars) {
@@ -113,6 +113,17 @@ public class BayesNet {
             }
         }
 
+        return vars;
+    }
+
+    /**
+     * Gets all the variables in the Bayes Net for eliminateAll().
+     * @param evidence given variables in the query
+     * @return list of variables
+     */
+    public ArrayList<Variable> getElimVars(TreeSet<Variable> evidence) {
+        ArrayList<Variable> vars = topologicalOrder(true, evidence);
+        Collections.reverse(vars);
         return vars;
     }
 
@@ -162,6 +173,47 @@ public class BayesNet {
     }
 
     /**
+     * Makes a factor for {@code currVar} using given evidence.
+     * @param currVar the variable to make a factor for
+     * @param evidence the given evidence
+     * @return the factor for {@code currVar}
+     */
+    public Factor makeFactor(Variable currVar, TreeSet<Variable> evidence) {
+        TreeSet<Variable> varsToAdd = new TreeSet<>();
+        varsToAdd.add(currVar);
+        for (Node n : nodes) {
+            if (n.var.equals(currVar)) {
+                for (char c : n.parentNames) {
+                    varsToAdd.add(new Variable(c));
+                }
+                break;
+            }
+        }
+        for (Variable v1 : evidence) {
+            for (Variable v2 : varsToAdd) {
+                if (v2.equals(v1)) {
+                    v2.setValue(v1.getValue());
+                }
+            }
+            varsToAdd.remove(v1);
+        }
+        Variable[] vars = new Variable[varsToAdd.size()];
+        double[] probs = new double[1 << vars.length];
+        vars = varsToAdd.toArray(vars);
+
+        for (int i = 0; i < 1 << vars.length; i++) {
+            int n = i;
+            for (int e = vars.length-1; e >= 0; e--) {
+                vars[e].setValue(n%2 == 1);
+                n >>= 1;
+            }
+            probs[i] = getProbability(currVar, varsToAdd);
+        }
+
+        return new Factor(vars, probs);
+    }
+
+    /**
      * Gets the number of variables in the Bayes Net.
      * @return the number of variables in the Bayes Net
      */
@@ -171,9 +223,12 @@ public class BayesNet {
 
     /**
      * Gets the list of variables in topological order.
+     * @param orderSize true if variables should be ordered by size before
+     *                  alphabetical, used for elimination
+     * @param evidence given variables in the query
      * @return list of variables in topological order
      */
-    private ArrayList<Variable> topologicalOrder() {
+    private ArrayList<Variable> topologicalOrder(boolean orderSize, TreeSet<Variable> evidence) {
         // Count the number of parents each variable has
         HashMap<Character, Integer> map = new HashMap<>();
         for (Node n : nodes) {
@@ -195,7 +250,62 @@ public class BayesNet {
         // Get topological order
         ArrayList<Variable> vars = new ArrayList<>();
         while (!queue.isEmpty()) {
-            Node curr = queue.remove();
+            Node curr;
+            if (!orderSize) {
+                curr = queue.remove();
+            } else {
+                Iterator<Node> it = queue.iterator();
+                Node max = it.next();
+                int maxCount = 1;
+                for (Variable v : evidence) {
+                    if (max.var.getName() == v.getName()) {
+                        maxCount = 0;
+                        break;
+                    }
+                }
+                for (char par : max.parentNames) {
+                    maxCount++;
+                    for (Variable v : evidence) {
+                        if (par == v.getName()) {
+                            maxCount--;
+                            break;
+                        }
+                    }
+                }
+
+                while (it.hasNext()) {
+                    int count = 1;
+                    Node n = it.next();
+                    for (Variable v : evidence) {
+                        if (n.var.getName() == v.getName()) {
+                            count = 0;
+                            break;
+                        }
+                    }
+                    for (char par : n.parentNames) {
+                        count++;
+                        for (Variable v : evidence) {
+                            if (par == v.getName()) {
+                                count--;
+                                break;
+                            }
+                        }
+                    }
+                    if (count >= maxCount) {
+                        maxCount = count;
+                        max = n;
+                    }
+                }
+
+                it = queue.iterator();
+                while (it.hasNext()) {
+                    if (it.next() == max) {
+                        it.remove();
+                        break;
+                    }
+                }
+                curr = max;
+            }
             vars.add(new Variable(curr.var.getName()));
 
             for (Node child : curr.children) {

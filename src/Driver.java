@@ -18,7 +18,7 @@ public class Driver {
      */
     public void enumerationAsk(Variable queryVar, TreeSet<Variable> evidence, BayesNet bayesNet) {
         // Get the variable ordering from the Bayes Net
-        ArrayList<Variable> vars = bayesNet.getVars(evidence);
+        ArrayList<Variable> vars = bayesNet.getEnumVars(evidence);
 
         // Add query variable to the evidence
         evidence.add(queryVar);
@@ -139,6 +139,61 @@ public class Driver {
         return retVal;
     }
 
+    public void eliminationAsk(Variable queryVar, TreeSet<Variable> evidence, BayesNet bayesNet) {
+        ArrayList<Factor> factors = new ArrayList<>();
+        ArrayList<Variable> vars = bayesNet.getElimVars(evidence);
+        for (Variable currVar : vars) {
+            System.out.printf("----- Variable:  %c -----%n", currVar.getName());
+            factors.add(bayesNet.makeFactor(currVar, evidence));
+            if (!queryVar.equals(currVar) && !evidence.contains(currVar)) {
+                sumOut(currVar, factors);
+            }
+            System.out.println("Factors:");
+            for (Factor f : factors) {
+                System.out.println(f);
+            }
+        }
+        pointwiseMultiply(queryVar, factors);
+        double trueProbability = factors.get(0).getProbability(1);
+        double falseProbability = factors.get(0).getProbability(0);
+
+        System.out.println("RESULT:");
+
+        // Print false probability
+        queryVar.setValue(false);
+        System.out.printf("P(%s%s) = %.16f%n",
+                queryVar,
+                String.format("%s%s", evidence.isEmpty() ? "" : " | ", evidence.toString().replaceAll("[\\[\\]]", "")),
+                falseProbability/(falseProbability+trueProbability));
+
+        // Print true probability
+        queryVar.setValue(true);
+        System.out.printf("P(%s%s) = %.16f%n",
+                queryVar,
+                String.format("%s%s", evidence.isEmpty() ? "" : " | ", evidence.toString().replaceAll("[\\[\\]]", "")),
+                trueProbability/(falseProbability+trueProbability));
+    }
+
+    public void sumOut(Variable currVar, ArrayList<Factor> factors) {
+        pointwiseMultiply(currVar, factors);
+        for (Factor f : factors) {
+            f.sumOut(currVar);
+        }
+    }
+
+    public void pointwiseMultiply(Variable currVar, ArrayList<Factor> factors) {
+        for (int i = 0; i < factors.size(); i++) {
+            for (int e = i+1; e < factors.size(); e++) {
+                Factor mult = factors.get(i).pointwiseMultiply(currVar, factors.get(e));
+                if (mult != null) {
+                    factors.set(i, mult);
+                    factors.remove(e);
+                    e--;
+                }
+            }
+        }
+    }
+
 	/**
      * Parses args from the command line and the input file.
      * @param args command line arguments
@@ -223,7 +278,7 @@ public class Driver {
 			if (mechanism.equals("enum")) {
                 new Driver().enumerationAsk(queryVar, evidence, bayesNet);
             } else if (mechanism.equals("elim")) {
-			    System.out.println("Elimination not implemented yet!");
+			    new Driver().eliminationAsk(queryVar, evidence, bayesNet);
             } else {
                 System.out.println("Invalid mechanism, should be either \"enum\" or \"elim\"");
             }
