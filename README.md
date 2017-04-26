@@ -1,4 +1,4 @@
-# CS 4365.HON Project 4
+# CS 4365.HON Project 4 (With Bonus)
 
 Exact Inference over Bayesian Network (w/ Enumeration & Elimination)
 
@@ -12,6 +12,7 @@ Skye Pekerti
 * BayesNet.java
 * Driver.java
 * Variable.java
+* Factor.java
 
 ## Platform
 
