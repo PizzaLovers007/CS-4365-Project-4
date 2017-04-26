@@ -18,6 +18,10 @@ public class Factor {
         probabilities = probs;
     }
 
+	/**
+     * Sums the probabilities of a Factor which involve similar Variable states
+     * @param toMerge variable of relevant states
+     */
     public void sumOut(Variable toMerge) {
         int index = -1;
         for (int i = 0; i < vars.length; i++) {
@@ -30,8 +34,8 @@ public class Factor {
             return;
         }
 
-        Variable[] newVars = new Variable[vars.length-1];
-        double[] newProbs = new double[probabilities.length >> 1];
+        Variable[] newVars = new Variable[vars.length-1]; // Array containing the Variables which are relevant
+        double[] newProbs = new double[probabilities.length >> 1]; // Array containing the resulting probabilities
 
         for (int i = 0; i < vars.length; i++) {
             if (i < index) {
@@ -67,6 +71,12 @@ public class Factor {
         probabilities = newProbs;
     }
 
+	/**
+     * Multiplies two Factors against each other in terms of Variable states
+     * @param toMerge Variable of relevant states
+     * @param other Factor to be multiplied against
+	 * @return Factor resulting factor from multiplication
+     */
     public Factor pointwiseMultiply(Variable toMerge, Factor other) {
         boolean found = false;
         for (Variable v : vars) {
@@ -138,6 +148,12 @@ public class Factor {
         return new Factor(newVars, probs);
     }
 
+	/**
+     * Checks if states of given Variables are the same
+     * @param one first set of variables
+     * @param two second set of variables
+	 * @return true if they are the same
+     */
     private boolean matches(Variable[] one, Variable[] two) {
         for (Variable v1 : one) {
             boolean match = true;
@@ -154,6 +170,11 @@ public class Factor {
         return true;
     }
 
+	/**
+     * Used to retrieve the probabilities
+     * @param index place the probability is in the list
+     * @return double of the probability
+     */
     public double getProbability(int index) {
         return probabilities[index];
     }
