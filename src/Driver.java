@@ -139,24 +139,49 @@ public class Driver {
         return retVal;
     }
 
+    /**
+     * Query to run elimination over the Bayes Net to find the probabilities of {@code queryVar}
+     * given {@code evidence}.
+     * @param queryVar variable to query
+     * @param evidence given variables in the query
+     * @param bayesNet Bayes Net for the query
+     */
     public void eliminationAsk(Variable queryVar, TreeSet<Variable> evidence, BayesNet bayesNet) {
+        // No factors at the very start
         ArrayList<Factor> factors = new ArrayList<>();
+
+        // Get the variables in the Bayes Net in the following order:
+        // Children before parents -> smallest factor -> alphabetical
         ArrayList<Variable> vars = bayesNet.getElimVars(evidence);
+
+        // Loop through every variable
         for (Variable currVar : vars) {
-            System.out.printf("----- Variable:  %c -----%n", currVar.getName());
+            // Print variable header
+            System.out.printf("----- Variable: %c -----%n", currVar.getName());
+
+            // Create factor for current variable
             factors.add(bayesNet.makeFactor(currVar, evidence));
+
+            // Sum out if current variable is a hidden variable
             if (!queryVar.equals(currVar) && !evidence.contains(currVar)) {
                 sumOut(currVar, factors);
             }
+
+            // Print current factors
             System.out.println("Factors:");
             for (Factor f : factors) {
                 System.out.println(f);
             }
         }
+
+        // Do final pointwise multiplication to make one factor
         pointwiseMultiply(queryVar, factors);
+
+        // Get true and false probabilities (not normalized)
         double trueProbability = factors.get(0).getProbability(1);
         double falseProbability = factors.get(0).getProbability(0);
 
+        // Print result header
         System.out.println("RESULT:");
 
         // Print false probability
@@ -174,17 +199,33 @@ public class Driver {
                 trueProbability/(falseProbability+trueProbability));
     }
 
+    /**
+     * Sums out all the factors that have {@code currVar}.
+     * @param currVar the variable to sum out
+     * @param factors the factors that need to be summed out
+     */
     public void sumOut(Variable currVar, ArrayList<Factor> factors) {
+        // First pointwise multiply to combine common factors
         pointwiseMultiply(currVar, factors);
+
+        // Then sum out all the factors individually
         for (Factor f : factors) {
             f.sumOut(currVar);
         }
     }
 
+    /**
+     * Pointwise multiplies all pairs of factors over {@code currVar}.
+     * @param currVar the variable to pointwise multiply over
+     * @param factors the factors that need to be pointwise multiplied
+     */
     public void pointwiseMultiply(Variable currVar, ArrayList<Factor> factors) {
         for (int i = 0; i < factors.size(); i++) {
             for (int e = i+1; e < factors.size(); e++) {
+                // Try to multiply
                 Factor mult = factors.get(i).pointwiseMultiply(currVar, factors.get(e));
+
+                // If successful multiply, replace old factors with new factor
                 if (mult != null) {
                     factors.set(i, mult);
                     factors.remove(e);

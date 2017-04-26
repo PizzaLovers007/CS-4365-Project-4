@@ -123,7 +123,10 @@ public class BayesNet {
      */
     public ArrayList<Variable> getElimVars(TreeSet<Variable> evidence) {
         ArrayList<Variable> vars = topologicalOrder(true, evidence);
+
+        // Need to eliminate children before parents, so reverse topological order
         Collections.reverse(vars);
+
         return vars;
     }
 
@@ -179,6 +182,7 @@ public class BayesNet {
      * @return the factor for {@code currVar}
      */
     public Factor makeFactor(Variable currVar, TreeSet<Variable> evidence) {
+        // Get the variables needed for the factor
         TreeSet<Variable> varsToAdd = new TreeSet<>();
         varsToAdd.add(currVar);
         for (Node n : nodes) {
@@ -189,6 +193,8 @@ public class BayesNet {
                 break;
             }
         }
+
+        // Remove factors in the evidence and set their values
         for (Variable v1 : evidence) {
             for (Variable v2 : varsToAdd) {
                 if (v2.equals(v1)) {
@@ -197,19 +203,24 @@ public class BayesNet {
             }
             varsToAdd.remove(v1);
         }
-        Variable[] vars = new Variable[varsToAdd.size()];
-        double[] probs = new double[1 << vars.length];
+
+        Variable[] vars = new Variable[varsToAdd.size()];  // New variables
+        double[] probs = new double[1 << vars.length];  // New probabilities
         vars = varsToAdd.toArray(vars);
 
+        // Generate probabilities
         for (int i = 0; i < 1 << vars.length; i++) {
+            // Set variable values for the index
             int n = i;
             for (int e = vars.length-1; e >= 0; e--) {
                 vars[e].setValue(n%2 == 1);
                 n >>= 1;
             }
+            // Copy probability for the variable assignment
             probs[i] = getProbability(currVar, varsToAdd);
         }
 
+        // Return the generated factor
         return new Factor(vars, probs);
     }
 
@@ -251,18 +262,25 @@ public class BayesNet {
         ArrayList<Variable> vars = new ArrayList<>();
         while (!queue.isEmpty()) {
             Node curr;
-            if (!orderSize) {
+            if (!orderSize) {  // Order for enumeration
+                // Just get the next node in alphabetical order with 0 in-degree
                 curr = queue.remove();
-            } else {
+            } else {  // Order for elimination
+                // Since we will be reversing the topological order, we need to sort it descending
+                // by factor size then reverse alphabetical order
+
+                // Count factor size for first element in the queue
                 Iterator<Node> it = queue.iterator();
                 Node max = it.next();
                 int maxCount = 1;
+                // factorSize-- if Node variable is in the evidence
                 for (Variable v : evidence) {
                     if (max.var.getName() == v.getName()) {
                         maxCount = 0;
                         break;
                     }
                 }
+                // factorSize-- for all parents in the evidence
                 for (char par : max.parentNames) {
                     maxCount++;
                     for (Variable v : evidence) {
@@ -273,15 +291,18 @@ public class BayesNet {
                     }
                 }
 
+                // Count factor size for all other elements in the queue
                 while (it.hasNext()) {
                     int count = 1;
                     Node n = it.next();
+                    // factorSize-- if Node variable is in the evidence
                     for (Variable v : evidence) {
                         if (n.var.getName() == v.getName()) {
                             count = 0;
                             break;
                         }
                     }
+                    // factorSize-- for all parents in the evidence
                     for (char par : n.parentNames) {
                         count++;
                         for (Variable v : evidence) {
@@ -291,12 +312,15 @@ public class BayesNet {
                             }
                         }
                     }
+
+                    // Keep the Node with the largest factor size, later alphabetically for ties
                     if (count >= maxCount) {
                         maxCount = count;
                         max = n;
                     }
                 }
 
+                // Find the Node and remove it from the queue
                 it = queue.iterator();
                 while (it.hasNext()) {
                     if (it.next() == max) {
@@ -304,6 +328,8 @@ public class BayesNet {
                         break;
                     }
                 }
+
+                // Use that node for the topological sort
                 curr = max;
             }
             vars.add(new Variable(curr.var.getName()));

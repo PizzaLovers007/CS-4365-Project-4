@@ -19,10 +19,12 @@ public class Factor {
     }
 
 	/**
-     * Sums the probabilities of a Factor which involve similar Variable states
+     * Sums the probabilities of a Factor which involve similar Variable states.
      * @param toMerge variable of relevant states
      */
     public void sumOut(Variable toMerge) {
+        // Search for the toMerge variable in the factor
+        // If it's not in the factor, then there is nothing to sum out
         int index = -1;
         for (int i = 0; i < vars.length; i++) {
             if (vars[i].getName() == toMerge.getName()) {
@@ -37,6 +39,7 @@ public class Factor {
         Variable[] newVars = new Variable[vars.length-1]; // Array containing the Variables which are relevant
         double[] newProbs = new double[probabilities.length >> 1]; // Array containing the resulting probabilities
 
+        // Copy the vars over minus the variable we are summing over
         for (int i = 0; i < vars.length; i++) {
             if (i < index) {
                 newVars[i] = vars[i];
@@ -45,9 +48,12 @@ public class Factor {
             }
         }
 
+        // Generate the new probabilities
         for (int i = 0; i < probabilities.length; i++) {
-            int pi = 0;
+            int pi = 0; // new probability index
             int n = i;
+
+            // Create the new probability index (reversed)
             for (int e = vars.length-1; e >= 0; e--) {
                 if (e == index) {
                     n >>= 1;
@@ -57,6 +63,8 @@ public class Factor {
                 pi |= n%2;
                 n >>= 1;
             }
+
+            // Unreverse the new probability index
             n = pi;
             pi = 0;
             for (int e = 0; e < vars.length-1; e++) {
@@ -64,20 +72,25 @@ public class Factor {
                 pi |= n%2;
                 n >>= 1;
             }
+
+            // Add one of the old probabilities to the new probability
             newProbs[pi] += probabilities[i];
         }
 
+        // Apply variable removal
         vars = newVars;
         probabilities = newProbs;
     }
 
 	/**
-     * Multiplies two Factors against each other in terms of Variable states
+     * Multiplies two Factors against each other in terms of Variable states.
      * @param toMerge Variable of relevant states
      * @param other Factor to be multiplied against
 	 * @return Factor resulting factor from multiplication
      */
     public Factor pointwiseMultiply(Variable toMerge, Factor other) {
+        // Search for the toMerge in both factors (this and other)
+        // If it is not in either factor, cannot pointwise multiply
         boolean found = false;
         for (Variable v : vars) {
             if (v.equals(toMerge)) {
@@ -99,6 +112,7 @@ public class Factor {
             return null;
         }
 
+        // Find the variables of the new factor that will be generated
         TreeSet<Variable> merge = new TreeSet<>();
         for (Variable v : vars) {
             merge.add(v);
@@ -106,23 +120,31 @@ public class Factor {
         for (Variable v : other.vars) {
             merge.add(v);
         }
-        Variable[] newVars = new Variable[merge.size()];
-        double[] probs = new double[1 << merge.size()];
+
+        Variable[] newVars = new Variable[merge.size()];  // New variables
+        double[] probs = new double[1 << merge.size()];  // New probabilities
         newVars = merge.toArray(newVars);
 
+        // Generate the new probabilities
         for (int i = 0; i < probabilities.length; i++) {
             for (int e = 0; e < other.probabilities.length; e++) {
+                // Set this factor's variables
                 int n = i;
                 for (int w = vars.length-1; w >= 0; w--) {
                     vars[w].setValue(n % 2 == 1);
                     n >>= 1;
                 }
+
+                // Set other factor's variables
                 n = e;
                 for (int w = other.vars.length-1; w >= 0; w--) {
                     other.vars[w].setValue(n % 2 == 1);
                     n >>= 1;
                 }
+
+                // Generate probability if common variables match their values
                 if (matches(vars, other.vars)) {
+                    // Get the index of the probability
                     int index = 0;
                     for (Variable v1 : merge) {
                         index <<= 1;
@@ -140,16 +162,19 @@ public class Factor {
                         }
                         index |= v1.getValue() ? 1 : 0;
                     }
+
+                    // Create the probability
                     probs[index] = probabilities[i] * other.probabilities[e];
                 }
             }
         }
 
+        // Return the generated factor
         return new Factor(newVars, probs);
     }
 
 	/**
-     * Checks if states of given Variables are the same
+     * Checks if values of shared Variables are the same.
      * @param one first set of variables
      * @param two second set of variables
 	 * @return true if they are the same
@@ -171,7 +196,7 @@ public class Factor {
     }
 
 	/**
-     * Used to retrieve the probabilities
+     * Used to retrieve the probabilities.
      * @param index place the probability is in the list
      * @return double of the probability
      */
@@ -179,6 +204,7 @@ public class Factor {
         return probabilities[index];
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < probabilities.length; i++) {
